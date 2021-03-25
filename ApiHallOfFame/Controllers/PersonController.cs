@@ -26,6 +26,7 @@ namespace ApiHallOfFame.Controllers
         public async Task<IEnumerable<Person>> GetPersons() => await Context.GetPersons();
 
         [Route("Person/{id}")]
+        [HttpGet]
         public async Task<ActionResult<Person>> GetPerson(long id)
         {
             var person = await Context.GetPerson(id);

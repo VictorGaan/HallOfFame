@@ -15,6 +15,5 @@ namespace ApiHallOfFame
         {
             modelBuilder.Entity<Person>().HasMany(x => x.Skills).WithOne(x=>x.Person).OnDelete(DeleteBehavior.Cascade);
         }
-
     }
 }
