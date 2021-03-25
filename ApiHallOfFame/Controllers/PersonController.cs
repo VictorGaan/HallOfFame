@@ -1,6 +1,7 @@
 ﻿using ApiHallOfFame.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,24 +13,26 @@ namespace ApiHallOfFame.Controllers
     [ApiController]
     public class PersonController : ControllerBase
     {
-        private readonly HallOfFameContext context;
+        private readonly IPerson Context;
+        private readonly ILogger<PersonController> Logger;
 
-        public PersonController(HallOfFameContext context)
+        public PersonController(IPerson context, ILogger<PersonController> logger)
         {
-            this.context = context;
+            Context = context;
+            Logger = logger;
         }
         [Route("Persons")]
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Person>>> GetPersons() => await context.Persons.Include(x => x.Skills).ToListAsync();
+        public async Task<IEnumerable<Person>> GetPersons() => await Context.GetPersons();
 
         [Route("Person/{id}")]
-        [HttpGet]
         public async Task<ActionResult<Person>> GetPerson(long id)
         {
-            var person = await context.Persons.Include(x => x.Skills).FirstOrDefaultAsync(x => x.Id == id);
+            var person = await Context.GetPerson(id);
 
             if (person == null)
             {
+                Logger.LogError("Not found, this person");
                 return NotFound();
             }
 
@@ -43,45 +46,31 @@ namespace ApiHallOfFame.Controllers
             {
                 return BadRequest();
             }
-            if (!PersonExists(id))
-            {
-                return NotFound();
-            }
-            context.Entry(person).State = EntityState.Modified;
-            await context.SaveChangesAsync();
-            return NoContent();
+            Context.UpdatePerson(person);
+            await Context.Save();
+            return Ok();
         }
         [Route("Person")]
         [HttpPost]
-        public async Task<ActionResult<Person>> PostPerson(Person person)
+        public async Task<IActionResult> PostPerson(Person person)
         {
-            context.Persons.Add(person);
-            await context.SaveChangesAsync();
-
+            Context.InsertPerson(person);
+            await Context.Save();
             return CreatedAtAction("GetPerson", new { id = person.Id }, person);
         }
         [Route("Person/{id}")]
         [HttpDelete]
         public async Task<IActionResult> DeletePerson(long id)
         {
-            var person = await context.Persons.FindAsync(id);
+            var person = await Context.GetPerson(id);
             if (person == null)
             {
+                Logger.LogError("Id does not match");
                 return NotFound();
             }
-            if (person.Skills != null)
-            {
-                return BadRequest();
-            }
-            context.Persons.Remove(person);
-            await context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        private bool PersonExists(long id)
-        {
-            return context.Persons.Any(e => e.Id == id);
+            Context.DeletePerson(person);
+            await Context.Save();
+            return Ok();
         }
     }
 }

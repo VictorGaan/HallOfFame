@@ -14,6 +14,6 @@ namespace ApiHallOfFame.Models
         public string Name { get; set; }
         [Required(ErrorMessage = "Enter your display name")]
         public string DisplayName { get; set; }
-        public virtual ICollection<Skill> Skills { get; set; }
+        public ICollection<Skill> Skills { get; set; }
     }
 }

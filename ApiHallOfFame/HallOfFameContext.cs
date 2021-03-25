@@ -13,7 +13,7 @@ namespace ApiHallOfFame
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Person>().HasMany(x => x.Skills);
+            modelBuilder.Entity<Person>().HasMany(x => x.Skills).WithOne(x=>x.Person).OnDelete(DeleteBehavior.Cascade);
         }
 
     }

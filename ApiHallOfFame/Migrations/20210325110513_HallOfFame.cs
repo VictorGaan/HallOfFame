@@ -2,7 +2,7 @@
 
 namespace ApiHallOfFame.Migrations
 {
-    public partial class HallOfFameMigration : Migration
+    public partial class HallOfFame : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -28,7 +28,7 @@ namespace ApiHallOfFame.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Level = table.Column<byte>(type: "tinyint", nullable: false),
-                    PersonId = table.Column<long>(type: "bigint", nullable: true)
+                    PersonId = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -38,7 +38,7 @@ namespace ApiHallOfFame.Migrations
                         column: x => x.PersonId,
                         principalTable: "Persons",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
