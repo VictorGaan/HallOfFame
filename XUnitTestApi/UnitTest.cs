@@ -1,6 +1,7 @@
 using ApiHallOfFame;
 using ApiHallOfFame.Controllers;
 using ApiHallOfFame.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Collections.Generic;
@@ -15,9 +16,17 @@ namespace XUnitTestApi
         private Mock<IPerson> MockPerson { get; set; } = new Mock<IPerson>();
         private Mock<ILogger<PersonController>> MockLogger { get; set; } = new Mock<ILogger<PersonController>>();
         private PersonController Controller { get; set; }
+
+        private PersonRepository Repository { get; set; }
+        private HallOfFameContext Context { get; set; }
         public UnitTest()
         {
             Controller = new PersonController(MockPerson.Object, MockLogger.Object);
+            var contextOptions = new DbContextOptionsBuilder<HallOfFameContext>()
+              .UseSqlServer(@"Server=DESKTOP-OB3VG27;Database=HallOfFame;Trusted_Connection=True;MultipleActiveResultSets=true")
+              .Options;
+            Context = new HallOfFameContext(contextOptions);
+            Repository = new PersonRepository(Context);
         }
 
         [Fact]
@@ -112,6 +121,49 @@ namespace XUnitTestApi
             Assert.Equal(HttpStatusCode.NotFound, (HttpStatusCode)deletePerson.GetType().GetProperty("StatusCode").GetValue(deletePerson, null));
         }
 
+        [Fact]
+        public void TestGetPersonsContext()
+        {
+            var persons = Repository.GetPersons().Result.ToList();
+            Assert.NotEmpty(persons);
+        }
+
+        [Fact]
+        public void TestGetPersonContext()
+        {
+            var person = Repository.GetPerson(1).Result;
+            Assert.NotNull(person);
+        }
+
+        [Fact]
+        public void TestPutPersonContext()
+        {
+            var person = Repository.GetPerson(1).Result;
+            Repository.UpdatePerson(person);
+            Assert.Equal(EntityState.Modified,Context.Entry(person).State);
+        }
+        [Fact]
+        public void TestPostPersonContext()
+        {
+            var count = Repository.GetPersons().Result.Count();
+            var person = new Person()
+            {
+                Name = "test",
+                DisplayName = "test"
+            };
+            Repository.InsertPerson(person);
+            Context.SaveChanges();
+            Assert.NotEqual(count, count+1);
+        }
+        [Fact]
+        public void TestDeletePersonContext()
+        {
+            var count = Repository.GetPersons().Result.Count();
+            var lastPerson = Repository.GetPersons().Result.LastOrDefault();
+            Repository.DeletePerson(lastPerson);
+            Context.SaveChanges();
+            Assert.NotEqual(count, count - 1);
+        }
         public List<Person> GetData()
         {
             return new List<Person>()
