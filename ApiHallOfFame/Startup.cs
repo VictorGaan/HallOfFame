@@ -1,3 +1,4 @@
+using Interfaces.ApiHallOfFame;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -5,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
+using Repositories.ApiHallOfFame;
 
 namespace ApiHallOfFame
 {
@@ -21,9 +23,9 @@ namespace ApiHallOfFame
         {
             services.AddControllers().AddNewtonsoftJson(options =>
                 options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore);
-            services.AddTransient<IPerson, PersonRepository>();
             services.AddDbContext<HallOfFameContext>(options =>
                 options.UseSqlServer(this.Configuration.GetConnectionString("DefaultConnection")));
+            services.AddScoped<IRepositoryManager, RepositoryManager>();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "ApiHallOfFame", Version = "v1" });

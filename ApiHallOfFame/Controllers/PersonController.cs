@@ -1,6 +1,6 @@
 ﻿using ApiHallOfFame.Models;
+using Interfaces.ApiHallOfFame;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,23 +13,23 @@ namespace ApiHallOfFame.Controllers
     [ApiController]
     public class PersonController : ControllerBase
     {
-        private readonly IPerson Context;
+        private readonly IRepositoryManager Repository;
         private readonly ILogger<PersonController> Logger;
 
-        public PersonController(IPerson context, ILogger<PersonController> logger)
+        public PersonController(IRepositoryManager repository, ILogger<PersonController> logger)
         {
-            Context = context;
+            Repository = repository;
             Logger = logger;
         }
         [Route("Persons")]
         [HttpGet]
-        public async Task<IEnumerable<Person>> GetPersons() => await Context.GetPersons();
+        public async Task<IEnumerable<Person>> GetPersons() => await Repository.Person.GetPersons();
 
         [Route("Person/{id}")]
         [HttpGet]
         public async Task<ActionResult<Person>> GetPerson(long id)
         {
-            var person = await Context.GetPerson(id);
+            var person = await Repository.Person.GetPerson(id);
 
             if (person == null)
             {
@@ -47,30 +47,30 @@ namespace ApiHallOfFame.Controllers
             {
                 return BadRequest();
             }
-            Context.UpdatePerson(person);
-            await Context.Save();
+            Repository.Person.UpdatePerson(person);
+            await Repository.Save();
             return Ok();
         }
         [Route("Person")]
         [HttpPost]
         public async Task<IActionResult> PostPerson(Person person)
         {
-            Context.InsertPerson(person);
-            await Context.Save();
+            Repository.Person.CreatePerson(person);
+            await Repository.Save();
             return CreatedAtAction("GetPerson", new { id = person.Id }, person);
         }
         [Route("Person/{id}")]
         [HttpDelete]
         public async Task<IActionResult> DeletePerson(long id)
         {
-            var person = await Context.GetPerson(id);
+            var person = await Repository.Person.GetPerson(id);
             if (person == null)
             {
                 Logger.LogError("Id does not match");
                 return NotFound();
             }
-            Context.DeletePerson(person);
-            await Context.Save();
+            Repository.Person.DeletePerson(person);
+            await Repository.Save();
             return Ok();
         }
     }

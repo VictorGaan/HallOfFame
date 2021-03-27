@@ -1,9 +1,6 @@
 ﻿using Newtonsoft.Json;
-using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace ApiHallOfFame.Models
 {
@@ -14,6 +11,6 @@ namespace ApiHallOfFame.Models
         public string Name { get; set; }
         [Required(ErrorMessage = "Enter your display name")]
         public string DisplayName { get; set; }
-        public ICollection<Skill> Skills { get; set; }
+        public virtual ICollection<Skill> Skills { get; set; }
     }
 }

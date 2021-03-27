@@ -1,9 +1,11 @@
 using ApiHallOfFame;
 using ApiHallOfFame.Controllers;
 using ApiHallOfFame.Models;
+using Interfaces.ApiHallOfFame;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Repositories.ApiHallOfFame;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -13,39 +15,35 @@ namespace XUnitTestApi
 {
     public class UnitTest
     {
-        private Mock<IPerson> MockPerson { get; set; } = new Mock<IPerson>();
+        private Mock<IRepositoryManager> MockRepository { get; set; } = new Mock<IRepositoryManager>();
         private Mock<ILogger<PersonController>> MockLogger { get; set; } = new Mock<ILogger<PersonController>>();
         private PersonController Controller { get; set; }
 
         private PersonRepository Repository { get; set; }
-        private HallOfFameContext Context { get; set; }
         public UnitTest()
         {
-            Controller = new PersonController(MockPerson.Object, MockLogger.Object);
-            var contextOptions = new DbContextOptionsBuilder<HallOfFameContext>()
-              .UseSqlServer(@"Server=DESKTOP-OB3VG27;Database=HallOfFame;Trusted_Connection=True;MultipleActiveResultSets=true")
-              .Options;
-            Context = new HallOfFameContext(contextOptions);
-            Repository = new PersonRepository(Context);
+            Controller = new PersonController(MockRepository.Object, MockLogger.Object);
+            DbContextOptions<HallOfFameContext> options = new DbContextOptionsBuilder<HallOfFameContext>()
+                              .UseInMemoryDatabase("Testing").Options;
+            Repository = new PersonRepository(new HallOfFameContext(options));
         }
 
         [Fact]
         public void TestGetPerson()
         {
-            long id = 1;
             var person = GetData().FirstOrDefault();
-            MockPerson.Setup(x => x.GetPerson(person.Id)).ReturnsAsync(person);
+            MockRepository.Setup(x => x.Person.GetPerson(person.Id)).ReturnsAsync(person);
 
-            var getPerson = Controller.GetPerson(id);
+            var getPerson = Controller.GetPerson(person.Id);
 
-            Assert.Equal(id, getPerson.Result.Value.Id);
+            Assert.Equal(person.Id, getPerson.Result.Value.Id);
         }
 
         [Fact]
         public void TestGetPersons()
         {
             var persons = GetData();
-            MockPerson.Setup(x => x.GetPersons()).ReturnsAsync(persons);
+            MockRepository.Setup(x => x.Person.GetPersons()).ReturnsAsync(persons);
 
             var getPersons = Controller.GetPersons();
 
@@ -55,10 +53,9 @@ namespace XUnitTestApi
         [Fact]
         public void TestDeletePerson()
         {
-            var persons = GetData();
-            var person = persons.FirstOrDefault();
-            MockPerson.Setup(x => x.GetPerson(person.Id)).ReturnsAsync(person);
-            MockPerson.Setup(x => x.DeletePerson(person));
+            var person = GetData().FirstOrDefault();
+            MockRepository.Setup(x => x.Person.GetPerson(person.Id)).ReturnsAsync(person);
+            MockRepository.Setup(x => x.Person.DeletePerson(person));
 
             var deletePerson = Controller.DeletePerson(person.Id).Result;
 
@@ -76,7 +73,7 @@ namespace XUnitTestApi
                 Name = "newPerson",
                 DisplayName = "newPerson",
             };
-            MockPerson.Setup(x => x.InsertPerson(person));
+            MockRepository.Setup(x => x.Person.CreatePerson(person));
 
             var postPerson = Controller.PostPerson(person).Result;
 
@@ -89,7 +86,7 @@ namespace XUnitTestApi
             var person = GetData().FirstOrDefault();
             person.Name = "updatePerson";
             person.DisplayName = "updatePerson";
-            MockPerson.Setup(x => x.UpdatePerson(person));
+            MockRepository.Setup(x => x.Person.UpdatePerson(person));
 
             var putPerson = Controller.PutPerson(person.Id, person).Result;
 
@@ -104,7 +101,7 @@ namespace XUnitTestApi
             person.Id = 100;
             person.Name = "updatePerson";
             person.DisplayName = "updatePerson";
-            MockPerson.Setup(x => x.UpdatePerson(person));
+            MockRepository.Setup(x => x.Person.UpdatePerson(person));
 
             var putPerson = Controller.PutPerson(1, person).Result;
 
@@ -114,33 +111,12 @@ namespace XUnitTestApi
         [Fact]
         public void TestDeletePersonWithoutRealId()
         {
-            var id = 15;
+            long id = 101;
+            MockRepository.Setup(x => x.Person.GetPerson(id));
 
             var deletePerson = Controller.DeletePerson(id).Result;
 
             Assert.Equal(HttpStatusCode.NotFound, (HttpStatusCode)deletePerson.GetType().GetProperty("StatusCode").GetValue(deletePerson, null));
-        }
-
-        [Fact]
-        public void TestGetPersonsContext()
-        {
-            var persons = Repository.GetPersons().Result.ToList();
-            Assert.NotEmpty(persons);
-        }
-
-        [Fact]
-        public void TestGetPersonContext()
-        {
-            var person = Repository.GetPerson(1).Result;
-            Assert.NotNull(person);
-        }
-
-        [Fact]
-        public void TestPutPersonContext()
-        {
-            var person = Repository.GetPerson(1).Result;
-            Repository.UpdatePerson(person);
-            Assert.Equal(EntityState.Modified,Context.Entry(person).State);
         }
         [Fact]
         public void TestPostPersonContext()
@@ -151,26 +127,57 @@ namespace XUnitTestApi
                 Name = "test",
                 DisplayName = "test"
             };
-            Repository.InsertPerson(person);
-            Context.SaveChanges();
-            Assert.NotEqual(count, count+1);
+            var secondPerson = new Person()
+            {
+                Name = "secondTest",
+                DisplayName = "secondTest"
+            };
+            Repository.CreatePerson(person);
+            Repository.CreatePerson(secondPerson);
+            Repository.Save();
+            var counta = Repository.GetPersons().Result.Count();
+
+            Assert.NotEqual(count, counta);
         }
+        [Fact]
+        public void TestGetPersonsContext()
+        {
+            Assert.NotEmpty(Repository.GetPersons().Result);
+        }
+
+        [Fact]
+        public void TestGetPersonContext()
+        {
+            Assert.NotNull(Repository.GetPerson(1).Result);
+        }
+
+        [Fact]
+        public void TestPutPersonContext()
+        {
+            Person person = Repository.GetPerson(1).Result;
+            string name = person.Name;
+            person.Name = "updateTest";
+            Repository.UpdatePerson(person);
+            Repository.Save();
+            Assert.NotEqual(person.Name, name);
+        }
+
         [Fact]
         public void TestDeletePersonContext()
         {
             var count = Repository.GetPersons().Result.Count();
-            var lastPerson = Repository.GetPersons().Result.LastOrDefault();
-            Repository.DeletePerson(lastPerson);
-            Context.SaveChanges();
-            Assert.NotEqual(count, count - 1);
+            var person = Repository.GetPerson(2).Result;
+            Repository.DeletePerson(person);
+            Repository.Save();
+            Assert.NotEqual(count - 1, count);
         }
         public List<Person> GetData()
         {
             return new List<Person>()
-            {
-                new Person(){Id=1,Name="Test1",DisplayName="Test1" },
-                new Person(){Id=2,Name="Test2",DisplayName="Test2",Skills=new List<Skill>() { new Skill() {Id=1,Level=1,Name="firstSkill",PersonId=2, } } }
-            };
+                {
+                    new Person(){Id=1,Name="Test1",DisplayName="Test1" },
+                    new Person(){Id=2,Name="Test2",DisplayName="Test2",Skills=new List<Skill>() { new Skill() {Id=1,Level=1,Name="firstSkill",PersonId=2, } } }
+                };
         }
     }
 }
