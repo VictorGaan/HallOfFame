@@ -1,41 +1,42 @@
-﻿using ApiHallOfFame;
+﻿using ApiHallOfFame.Interfaces;
 using ApiHallOfFame.Models;
-using Interfaces.ApiHallOfFame;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Repositories.ApiHallOfFame
+namespace ApiHallOfFame.Repositories
 {
-    public class PersonRepository : RepositoryBase<Person>, IPerson
+    public class PersonRepository : BaseRepository, IPersonRepository
     {
-        public PersonRepository(HallOfFameContext context):base(context)
+        public PersonRepository(HallOfFameContext context) : base(context) { }
+
+        public async Task AddAsync(Person person)
         {
+            await _context.Persons.AddAsync(person);
+            await CompleteAsync();
         }
 
-        public void CreatePerson(Person person)
+        public async Task<Person> FindByIdAsync(long id)
         {
-            Create(person);
+            return await _context.Persons.Include(x => x.Skills).FirstOrDefaultAsync(x => x.Id == id);
         }
 
-        public void DeletePerson(Person person)
+        public async Task<IEnumerable<Person>> ListAsync()
         {
-            Delete(person);
+            return await _context.Persons.Include(x => x.Skills).AsNoTracking().ToListAsync();
         }
 
-        public async Task<Person> GetPerson(long id)
+        public async Task Remove(Person person)
         {
-            return await FindAll(x=>x.Skills).FirstOrDefaultAsync(x => x.Id == id);
+            _context.Persons.Remove(person);
+            await CompleteAsync();
         }
 
-        public async Task<IEnumerable<Person>> GetPersons()
+        public async Task Update(Person person)
         {
-            return await FindAll(x=>x.Skills).ToListAsync();
+            _context.Persons.Update(person);
+            await CompleteAsync();
         }
 
-        public void UpdatePerson(Person person)
-        {
-            Update(person);
-        }
     }
 }

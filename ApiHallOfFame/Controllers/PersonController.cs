@@ -1,9 +1,8 @@
-﻿using ApiHallOfFame.Models;
-using Interfaces.ApiHallOfFame;
+﻿using ApiHallOfFame.Interfaces;
+using ApiHallOfFame.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace ApiHallOfFame.Controllers
@@ -13,65 +12,29 @@ namespace ApiHallOfFame.Controllers
     [ApiController]
     public class PersonController : ControllerBase
     {
-        private readonly IRepositoryManager Repository;
-        private readonly ILogger<PersonController> Logger;
-
-        public PersonController(IRepositoryManager repository, ILogger<PersonController> logger)
+        private readonly IPersonService _personService;
+        public PersonController(IPersonService personService)
         {
-            Repository = repository;
-            Logger = logger;
+            _personService = personService;
         }
         [Route("Persons")]
         [HttpGet]
-        public async Task<IEnumerable<Person>> GetPersons() => await Repository.Person.GetPersons();
+        public async Task<IEnumerable<Person>> GetPersons() => await _personService.GetPersonsAsync();
 
         [Route("Person/{id}")]
         [HttpGet]
-        public async Task<ActionResult<Person>> GetPerson(long id)
-        {
-            var person = await Repository.Person.GetPerson(id);
+        public async Task<ActionResult<Person>> GetPerson(long id) => await _personService.GetPersonAsync(id);
 
-            if (person == null)
-            {
-                Logger.LogError("Not found, this person");
-                return NotFound();
-            }
-
-            return person;
-        }
         [Route("Person/{id}")]
         [HttpPut]
-        public async Task<IActionResult> PutPerson(long id, Person person)
-        {
-            if (id != person.Id)
-            {
-                return BadRequest();
-            }
-            Repository.Person.UpdatePerson(person);
-            await Repository.Save();
-            return Ok();
-        }
+        public async Task<IActionResult> PutPerson(long id, Person person) => await _personService.UpdateAsync(id, person);
+
         [Route("Person")]
         [HttpPost]
-        public async Task<IActionResult> PostPerson(Person person)
-        {
-            Repository.Person.CreatePerson(person);
-            await Repository.Save();
-            return CreatedAtAction("GetPerson", new { id = person.Id }, person);
-        }
+        public async Task<IActionResult> PostPerson(Person person)=> await _personService.AddAsync(person);
+
         [Route("Person/{id}")]
         [HttpDelete]
-        public async Task<IActionResult> DeletePerson(long id)
-        {
-            var person = await Repository.Person.GetPerson(id);
-            if (person == null)
-            {
-                Logger.LogError("Id does not match");
-                return NotFound();
-            }
-            Repository.Person.DeletePerson(person);
-            await Repository.Save();
-            return Ok();
-        }
+        public async Task<IActionResult> DeletePerson(long id) =>await _personService.DeleteAsync(id);
     }
 }
